@@ -68,17 +68,23 @@ CWARNS= $(CWARNSCPP) $(CWARNSC) $(CWARNGCC)
 
 LOCAL = $(TESTS) $(CWARNS)
 
+ifeq ($(WEBC_ROOT),)
+    $(error WEBC_ROOT must be defined)
+endif
 
-# enable Linux goodies
-MYCFLAGS= $(LOCAL) -std=c99 -DLUA_USE_LINUX -DLUA_USE_READLINE
+ifeq ($(OPENLIBM_ROOT),)
+    $(error OPENLIBM_ROOT must be defined)
+endif
+
+MYCFLAGS= $(LOCAL) -DLUA_USE_POSIX
+MYCFLAGS += -I$(WEBC_ROOT) -I$(OPENLIBM_ROOT)/include
+MYCFLAGS += -Dl_signalT=int -Wno-undef -Wno-unknown-warning-option
 MYLDFLAGS= $(LOCAL) -Wl,-E
-MYLIBS= -ldl -lreadline
 
 
-CC= gcc
-CFLAGS= -Wall -O2 $(MYCFLAGS) -fno-stack-protector -fno-common -march=native
-AR= ar rc
-RANLIB= ranlib
+CC= clang
+CFLAGS= --target=wasm32-unknown-none -nostdlib -Wall -O2 $(MYCFLAGS)
+AR= llvm-ar rcu
 RM= rm -f
 
 
@@ -104,7 +110,7 @@ ALL_T= $(CORE_T) $(LUA_T)
 ALL_O= $(CORE_O) $(LUA_O) $(AUX_O) $(LIB_O)
 ALL_A= $(CORE_T)
 
-all:	$(ALL_T)
+all:	$(ALL_A)
 	touch all
 
 o:	$(ALL_O)
@@ -113,7 +119,6 @@ a:	$(ALL_A)
 
 $(CORE_T): $(CORE_O) $(AUX_O) $(LIB_O)
 	$(AR) $@ $?
-	$(RANLIB) $@
 
 $(LUA_T): $(LUA_O) $(CORE_T)
 	$(CC) -o $@ $(MYLDFLAGS) $(LUA_O) $(CORE_T) $(LIBS) $(MYLIBS) $(DL)
