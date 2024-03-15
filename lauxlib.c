@@ -241,63 +241,6 @@ LUALIB_API int luaL_error (lua_State *L, const char *fmt, ...) {
   return lua_error(L);
 }
 
-
-LUALIB_API int luaL_fileresult (lua_State *L, int stat, const char *fname) {
-  int en = errno;  /* calls to Lua API may change this value */
-  if (stat) {
-    lua_pushboolean(L, 1);
-    return 1;
-  }
-  else {
-    luaL_pushfail(L);
-    if (fname)
-      lua_pushfstring(L, "%s: %s", fname, strerror(en));
-    else
-      lua_pushstring(L, strerror(en));
-    lua_pushinteger(L, en);
-    return 3;
-  }
-}
-
-
-#if !defined(l_inspectstat)	/* { */
-
-#if defined(LUA_USE_POSIX)
-
-#include <sys/wait.h>
-
-/*
-** use appropriate macros to interpret 'pclose' return status
-*/
-#define l_inspectstat(stat,what)  \
-   if (WIFEXITED(stat)) { stat = WEXITSTATUS(stat); } \
-   else if (WIFSIGNALED(stat)) { stat = WTERMSIG(stat); what = "signal"; }
-
-#else
-
-#define l_inspectstat(stat,what)  /* no op */
-
-#endif
-
-#endif				/* } */
-
-
-LUALIB_API int luaL_execresult (lua_State *L, int stat) {
-  if (stat != 0 && errno != 0)  /* error with an 'errno'? */
-    return luaL_fileresult(L, 0, NULL);
-  else {
-    const char *what = "exit";  /* type of termination */
-    l_inspectstat(stat, what);  /* interpret result */
-    if (*what == 'e' && stat == 0)  /* successful termination? */
-      lua_pushboolean(L, 1);
-    else
-      luaL_pushfail(L);
-    lua_pushstring(L, what);
-    lua_pushinteger(L, stat);
-    return 3;  /* return true/fail,what,code */
-  }
-}
-
 /* }====================================================== */
 
 
