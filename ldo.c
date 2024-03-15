@@ -44,6 +44,9 @@
 ** =======================================================
 */
 
+#define LUAI_THROW(L,c) longjmp((c)->b, 1)
+#define luai_jmpbuf jmp_buf
+
 /*
 ** LUAI_THROW/LUAI_TRY define how Lua does exception handling. By
 ** default, Lua handles errors with exceptions when compiling as
@@ -134,6 +137,16 @@ l_noret luaD_throw (lua_State *L, int errcode) {
   }
 }
 
+typedef struct {
+    lua_State *L;
+    Pfunc f;
+    void *ud;
+} fnarg_t;
+
+static void call_fnarg(void *data){
+    fnarg_t *fnarg = data;
+    (*fnarg->f)(fnarg->L, fnarg->ud);
+}
 
 int luaD_rawrunprotected (lua_State *L, Pfunc f, void *ud) {
   l_uint32 oldnCcalls = L->nCcalls;
@@ -141,9 +154,11 @@ int luaD_rawrunprotected (lua_State *L, Pfunc f, void *ud) {
   lj.status = LUA_OK;
   lj.previous = L->errorJmp;  /* chain new error handler */
   L->errorJmp = &lj;
-  LUAI_TRY(L, &lj,
-    (*f)(L, ud);
-  );
+  // LUAI_TRY(L, &lj,
+  //   (*f)(L, ud);
+  // );
+  fnarg_t fnarg = {L, f, ud};
+  webc_setjmp(lj.b, call_fnarg, &fnarg);
   L->errorJmp = lj.previous;  /* restore old error handler */
   L->nCcalls = oldnCcalls;
   return lj.status;
