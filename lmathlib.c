@@ -625,10 +625,11 @@ static void setseed (lua_State *L, Rand64 *state,
 ** and the address of 'L' (in case the machine does address space layout
 ** randomization).
 */
+#include <sys/random.h>
 static void randseed (lua_State *L, RanState *state) {
-  lua_Unsigned seed1 = (lua_Unsigned)time(NULL);
-  lua_Unsigned seed2 = (lua_Unsigned)(size_t)L;
-  setseed(L, state->s, seed1, seed2);
+  lua_Unsigned seeds[2];
+  webc_getrandom(seeds, sizeof(seeds));
+  setseed(L, state->s, seeds[0], seeds[1]);
 }
 
 
